@@ -5,18 +5,32 @@
 > AI proposes. The runtime decides.
 
 ```bash
-optimizer run . \
+python -m optimizer run demo \
   --workload "python scripts/performance_scenario.py" \
   --test "pytest -q" \
-  --passes 3
+  --hotspot parse_record --hotspot get_user --passes 2
 ```
 
-- `.` is the optimization target: the entire repository.
+- `demo` is the optimization target: the entire repository at that path.
 - `--workload` specifies how to exercise the application so Optimizer can collect runtime
-  measurements. It does not restrict optimization to that file. Optimizer profiles whatever
-  code the workload touches across the repo.
-- `--test` verifies behavior. Candidates that fail it are rejected.
+  measurements. It runs with the target as its working directory. It does not restrict
+  optimization to that file. Optimizer profiles whatever code the workload touches across the repo.
+- `--test` verifies behavior. Candidates that fail it are rejected. Omit it and Optimizer warns
+  that it can only measure, not verify.
 - `--passes` is how many bottlenecks to fix in sequence, re-profiling after each.
+- `--hotspot NAME` names the function to target (one per pass). Until the profiler ranks
+  hotspots itself (the contract is `PROFILER_CONTRACT` in `optimizer/pipeline.py`), this is how
+  a target is chosen.
+- `--yes` applies the winner without the `Apply changes? [Y/n]` prompt; `--json` writes the
+  structured result to stdout for the web display; `--no-color` (or `NO_COLOR=1`) for plain output.
+
+Also: `python -m optimizer inspect demo` (analyze only) and `python -m optimizer recover demo`
+(restore the newest backup after an interrupted run). `pip install -e .` gives you a bare
+`optimizer` command; `python -m optimizer` needs no install.
+
+Run from the repo root with `.venv` activated: the LLM client reads `.env` from the current
+directory (`LLM_PROVIDER=mock` runs fully offline), and `python` in `--workload` resolves from
+`PATH`. Reset the demo afterwards with `git checkout demo/`.
 
 ## What it does
 

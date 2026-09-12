@@ -151,26 +151,31 @@ def format_pass(pr: dict, show_diff: bool = True) -> str:
     for r in pr["results"]:
         parts.append(format_candidate(r))
 
+    parts.append(format_winner(pr, show_diff=show_diff))
+    return "\n\n".join(parts)
+
+
+def format_winner(pr: dict, show_diff: bool = True) -> str:
+    """Brief §5 tail: Selected / Before / After / Speedup / Files changed, then the diff."""
     w = pr.get("winner")
     if w is None:
-        parts.append("No valid candidate. Nothing applied.")
-    else:
-        title = w["candidate_id"].replace("_", " ").title()
-        block = [
-            f"Selected {title}",
-            f"Before: {_ms(pr['baseline_ms'])}",
-            f"After:  {_ms(pr['after_ms'])}",
-            f"Speedup: {pr['speedup']:.1f}x",
-            f"Runtime reduction: {pr['reduction_percent']:.1f}%",
-            "Files changed:\n" + "\n".join(f"- {f}" for f in pr["files_changed"]),
-        ]
-        if not pr["applied"]:
-            block.append("(not applied)")
-        parts.append("\n".join(block))
-        if show_diff and pr.get("diff"):
-            parts.append(pr["diff"].rstrip("\n"))
-            if w.get("explanation"):
-                parts.append(f"Why this is faster:\n{w['explanation']}")
+        return "No valid candidate. Nothing applied."
+    title = w["candidate_id"].replace("_", " ").title()
+    block = [
+        f"Selected {title}",
+        f"Before: {_ms(pr['baseline_ms'])}",
+        f"After:  {_ms(pr['after_ms'])}",
+        f"Speedup: {pr['speedup']:.1f}x",
+        f"Runtime reduction: {pr['reduction_percent']:.1f}%",
+        "Files changed:\n" + "\n".join(f"- {f}" for f in pr["files_changed"]),
+    ]
+    if not pr["applied"]:
+        block.append("(not applied)")
+    parts = ["\n".join(block)]
+    if show_diff and pr.get("diff"):
+        parts.append(pr["diff"].rstrip("\n"))
+        if w.get("explanation"):
+            parts.append(f"Why this is faster:\n{w['explanation']}")
     return "\n\n".join(parts)
 
 
