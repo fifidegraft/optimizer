@@ -22,3 +22,8 @@ next-env.d.ts
 .env
 .env.local
 .DS_Store
+
+*.md
+!README.md
+*.txt
+!implementation.md
