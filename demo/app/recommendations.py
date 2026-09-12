@@ -1,4 +1,4 @@
-from services.users import get_user
+from .users import get_user
 
 
 def generate_feed(user_ids):
