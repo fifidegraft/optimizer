@@ -23,3 +23,6 @@ next-env.d.ts
 .env.local
 .DS_Store
 RULES.md
+
+# optimizer run state (backups of files under trial)
+.optimizer/

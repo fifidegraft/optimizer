@@ -11,3 +11,13 @@ dev = ["pytest>=8"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+optimizer = "optimizer.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["optimizer*"]
