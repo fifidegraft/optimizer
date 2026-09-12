@@ -54,18 +54,22 @@ def snapshot(root: str | Path, paths: list[str]) -> dict:
     if not paths:
         raise ValueError("snapshot needs at least one path")
 
-    snap_id = _new_id()
-    backup_dir = root / BACKUP_ROOT / snap_id
-    backup_dir.mkdir(parents=True, exist_ok=False)
-
-    files = []
+    # Validate every path before creating anything, so a bad path leaves no half-made backup.
+    resolved: list[tuple[str, Path]] = []
     seen: set[str] = set()
     for rel in paths:
         rel = Path(rel).as_posix()
         if rel in seen:
             continue
         seen.add(rel)
-        src = _resolve_inside(root, rel)
+        resolved.append((rel, _resolve_inside(root, rel)))
+
+    snap_id = _new_id()
+    backup_dir = root / BACKUP_ROOT / snap_id
+    backup_dir.mkdir(parents=True, exist_ok=False)
+
+    files = []
+    for rel, src in resolved:
         entry = {"path": rel, "existed": src.is_file(), "sha256": None}
         if entry["existed"]:
             dst = backup_dir / rel
