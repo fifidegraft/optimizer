@@ -1,3 +1,17 @@
-from .schemas import CodeContext, FunctionNode
+"""Shared data models for the Optimizer pipeline."""
 
-__all__ = ["CodeContext", "FunctionNode"]
+from .schemas import (
+    CodeContext,
+    FunctionNode,
+    Hotspot,
+    ModifiedFile,
+    CandidatePatch,
+)
+
+__all__ = [
+    "CodeContext",
+    "FunctionNode",
+    "Hotspot",
+    "ModifiedFile",
+    "CandidatePatch",
+]
