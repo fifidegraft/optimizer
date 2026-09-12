@@ -1,4 +1,4 @@
-from database import find_user
+from .database import find_user
 
 
 def get_user(user_id):
