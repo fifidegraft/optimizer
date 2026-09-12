@@ -1,159 +1,191 @@
-"""Shared data models for Optimizer modules.
+"""Shared data models for the Optimizer pipeline.
 
-All modules communicate using these dataclasses. Lock these in Hour 0 of development
-before implementation begins. Changes to these schemas affect all modules.
-
-Owner: All team members (consensus-driven)
+Every module (scanner, profiler, agent, verifier) passes these objects
+around, so this file should not change without the whole team agreeing.
 """
 
-from dataclasses import dataclass, field
-from typing import Optional
+from __future__ import annotations
+from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Optional
+import json
+
+
+# =====================================================================
+# Scanner Models (Joe)
+# =====================================================================
+
+@dataclass
+class FunctionNode:
+    """One function or method found while scanning the repository."""
+    name: str                     # bare name, e.g. "generate_feed"
+    qualified_name: str           # e.g. "services.recommendations.generate_feed"
+    file_path: str
+    line_start: int
+    line_end: int
+    calls: List[str] = field(default_factory=list)  # names this function calls (unresolved)
 
 
 @dataclass
-class WorkloadResult:
-    """
-    Result of running a single workload command.
+class CodeContext:
+    """Everything the LLM (Person 3) needs to propose an optimization for one hotspot."""
+    hotspot_function: str
+    file_path: str
+    line_start: int
+    line_end: int
+    code_snippet: str
+    dependencies: List[str] = field(default_factory=list)
+    related_files: List[str] = field(default_factory=list)
+    related_code_snippets: Dict[str, str] = field(default_factory=dict)
 
-    Returned by profiler.runner.run_workload() and profiler.runner.benchmark_workload().
-    Used by verifier to benchmark candidates.
-    """
 
-    runtime_ms: float
-    """Elapsed time in milliseconds."""
-
-    exit_code: int
-    """Process exit code (0 = success, non-zero = failure, -1 = system error)."""
-
-    command: str
-    """The command that was executed."""
-
-    output: str
-    """Captured stdout + stderr combined."""
-
-    timestamp: str
-    """ISO 8601 timestamp when the run started."""
-
+# =====================================================================
+# Profiler & Hotspot Models (Henry / Emeka)
+# =====================================================================
 
 @dataclass
 class Hotspot:
-    """
-    A performance bottleneck identified by profiling.
-
-    Produced by profiler.profiler.identify_hotspots().
-    Consumed by agent to generate optimization candidates.
-    """
-
+    """Represents a performance bottleneck identified by the profiler and scanner."""
     function: str
-    """Simple function name (e.g., 'generate_feed')."""
-
     qualified_name: str
-    """Fully qualified name (e.g., 'services.recommendations.generate_feed')."""
-
     file: str
-    """Path to the file containing this function."""
-
     line: int
-    """Line number where function is defined."""
-
     calls: int
-    """Number of times this function was called during profiling."""
-
     self_time: float
-    """Time spent in this function's own code (seconds), excluding callees."""
-
     cumulative_time: float
-    """Total time spent in this function and everything it calls (seconds)."""
-
     runtime_percent: float
-    """Percentage of total runtime spent in this function (0-100)."""
+    dependencies: List[str] = field(default_factory=list)
+    related_files: List[str] = field(default_factory=list)
 
-    dependencies: list[str] = field(default_factory=list)
-    """Qualified names of functions this hotspot calls."""
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> Hotspot:
+        return cls(
+            function=str(data.get("function") or ""),
+            qualified_name=str(data.get("qualified_name") or ""),
+            file=str(data.get("file") or ""),
+            line=int(data.get("line") or 0),
+            calls=int(data.get("calls") or 0),
+            self_time=float(data.get("self_time") or 0.0),
+            cumulative_time=float(data.get("cumulative_time") or 0.0),
+            runtime_percent=float(data.get("runtime_percent") or 0.0),
+            dependencies=list(data.get("dependencies") or []),
+            related_files=list(data.get("related_files") or [])
+        )
 
-    related_files: list[str] = field(default_factory=list)
-    """Files involved in the call chain from this hotspot."""
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+# =====================================================================
+# Agent & Verifier Models (Henry / Fifi)
+# =====================================================================
+
+@dataclass
+class ModifiedFile:
+    """
+    Represents an edited file within a candidate patch.
+    Matches Fifi's format: {"path": "...", "new_content": "..."}.
+    """
+    path: str
+    new_content: str
+
+    @property
+    def content(self) -> str:
+        """Alias for backward compatibility."""
+        return self.new_content
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> ModifiedFile:
+        return cls(
+            path=str(data.get("path") or ""),
+            new_content=str(data.get("new_content") or data.get("content") or "")
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "path": self.path,
+            "new_content": self.new_content
+        }
 
 
 @dataclass
-class CandidateOptimization:
+class CandidatePatch:
     """
-    A proposed optimization with benchmark results.
-
-    Produced by agent.candidate_generator.generate_candidates().
-    Passed to verifier for testing and benchmarking.
-    Updated by verifier with test/benchmark results.
+    Represents a candidate optimization patch sent to Fifi's Verifier.
+    Matches Fifi's requested contract:
+    {
+        "candidate_id": "candidate_a",
+        "strategy": "...",
+        "explanation": "...",
+        "edits": [{"path": "...", "new_content": "..."}]
+    }
     """
-
     candidate_id: str
-    """Unique identifier (e.g., 'candidate_a', 'candidate_b')."""
-
     strategy: str
-    """Human-readable optimization strategy (e.g., 'batch user retrieval')."""
+    explanation: str
+    edits: List[ModifiedFile] = field(default_factory=list)
+    # Verification & benchmarking results populated by Fifi's Verifier directly
+    accepted: Optional[bool] = None
+    rejection_reason: Optional[str] = None  # "apply_failed" | "tests_failed" | "benchmark_failed" | "slower" | None
+    tests: Optional[Dict[str, Any]] = None   # {"passed": True, "total": 34, "passed_count": 34, "failed": 0}
+    benchmark: Optional[Dict[str, Any]] = None  # {"before_ms": 840, "after_ms": 191, "speedup": 4.4}
 
-    files_changed: list[str]
-    """Paths to files modified by this candidate (1-3 files)."""
+    @property
+    def modified_files(self) -> List[ModifiedFile]:
+        """Alias for edits."""
+        return self.edits
 
-    # Generated by verifier
-    tests_passed: bool = False
-    """True if all tests passed after applying this candidate."""
+    @property
+    def files_changed(self) -> List[str]:
+        """Convenience list of file paths."""
+        return [e.path for e in self.edits]
 
-    test_output: Optional[str] = None
-    """Captured output from running test suite."""
+    @property
+    def tests_passed(self) -> Optional[bool]:
+        """Supports Fifi's boolean format or legacy count comparison."""
+        if self.tests is not None:
+            val = self.tests.get("passed")
+            if isinstance(val, bool):
+                return val
+            if isinstance(val, (int, float)) and "total" in self.tests:
+                return val == self.tests.get("total")
+        return None
 
-    benchmark_before_ms: Optional[float] = None
-    """Baseline execution time before applying candidate (ms)."""
+    @property
+    def speedup(self) -> Optional[float]:
+        if self.benchmark is not None:
+            return self.benchmark.get("speedup")
+        return None
 
-    benchmark_after_ms: Optional[float] = None
-    """Execution time after applying candidate (ms)."""
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> CandidatePatch:
+        raw_edits = data.get("edits") or data.get("modified_files") or []
+        edits_list = [
+            ModifiedFile.from_dict(f) if isinstance(f, dict) else f
+            for f in raw_edits
+        ]
+        return cls(
+            candidate_id=str(data.get("candidate_id") or ""),
+            strategy=str(data.get("strategy") or ""),
+            explanation=str(data.get("explanation") or ""),
+            edits=edits_list,
+            accepted=data.get("accepted"),
+            rejection_reason=data.get("rejection_reason"),
+            tests=data.get("tests"),
+            benchmark=data.get("benchmark")
+        )
 
-    benchmark_failed: bool = False
-    """True if candidate process exited with non-zero code during benchmark."""
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "candidate_id": self.candidate_id,
+            "strategy": self.strategy,
+            "explanation": self.explanation,
+            "edits": [e.to_dict() for e in self.edits],
+            "files_changed": self.files_changed,
+            "accepted": self.accepted,
+            "rejection_reason": self.rejection_reason,
+            "tests": self.tests,
+            "benchmark": self.benchmark
+        }
 
-    speedup: Optional[float] = None
-    """Speedup ratio: benchmark_before_ms / benchmark_after_ms."""
-
-    accepted: bool = False
-    """True if this candidate was selected and applied (only one per pass)."""
-
-    explanation: Optional[str] = None
-    """Agent's explanation of the optimization strategy."""
-
-
-@dataclass
-class OptimizationPass:
-    """
-    One iteration of the optimization loop (profile → optimize → benchmark → apply).
-
-    Produced by main optimization loop.
-    Used for reporting and multi-pass tracking.
-    """
-
-    pass_number: int
-    """Pass number (1-indexed)."""
-
-    hotspot: Hotspot
-    """The bottleneck targeted in this pass."""
-
-    candidates: list[CandidateOptimization]
-    """All candidate optimizations considered."""
-
-    selected_candidate: Optional[CandidateOptimization] = None
-    """The candidate that was accepted and applied (if any)."""
-
-    speedup: Optional[float] = None
-    """Overall speedup from this pass (if candidate was accepted)."""
-
-    status: str = "pending"
-    """Status: 'pending', 'in_progress', 'completed', 'failed'."""
-
-
-# Type hints for common return values
-WorkloadDict = dict
-"""Plain dict matching WorkloadResult fields (used for dict-based interchange)."""
-
-HotspotDict = dict
-"""Plain dict matching Hotspot fields."""
-
-CandidateDict = dict
-"""Plain dict matching CandidateOptimization fields."""
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2)

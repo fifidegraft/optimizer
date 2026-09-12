@@ -1,0 +1,13 @@
+[project]
+name = "optimizer"
+version = "0.1.0"
+description = "Autonomous performance engineer for Python codebases. AI proposes. The runtime decides."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

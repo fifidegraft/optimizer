@@ -56,9 +56,9 @@ interface you expose to the others. Put your name in the table and go.
 
 | Folder | Owner | Responsibility |
 |---|---|---|
-| `optimizer/scanner/` | | **Repository Intelligence.** Find `.py` files (ignore `.git`, `.venv`, `build`, `dist`, ...), parse ASTs, extract functions, classes, imports and calls, build a call/dependency graph, and provide the related code context around a hotspot. |
+| `optimizer/scanner/` |Joe | **Repository Intelligence.** Find `.py` files (ignore `.git`, `.venv`, `build`, `dist`, ...), parse ASTs, extract functions, classes, imports and calls, build a call/dependency graph, and provide the related code context around a hotspot. |
 | `optimizer/profiler/` | Emeka | **Performance Engine.** Run the workload command, integrate `cProfile`, parse the output, rank the hottest functions, record baseline timings, benchmark modified candidates, re-profile after accepted changes. |
-| `optimizer/agent/` | | **Optimization Agent.** Gather the hotspot plus dependency context, build the LLM prompt, generate 2–3 candidate optimizations that preserve behavior, return structured patches touching 1–3 files, explain each strategy. |
+| `optimizer/agent/` | Henry | **Optimization Agent.** Gather the hotspot plus dependency context, build the LLM prompt, generate 2–3 candidate optimizations that preserve behavior, return structured patches touching 1–3 files, explain each strategy. |
 | `optimizer/verifier/` |Fifi| **Safety, CLI, and Developer Experience.** CLI commands, run the tests, detect failures, back up files, roll back failed candidates, render git-style diffs, report before/after metrics, polish terminal output, own the demo. |
 | `optimizer/models/` | everyone | **Shared representation.** The hotspot and candidate objects every module passes around. Agree on these in hour 0 (see brief §9 and §11) before anyone writes module code. |
 | `demo/` | everyone | **Demo repository.** A small deterministic Python project with 15–30 functions, three planted bottlenecks, tests, and a workload script (brief §21). |

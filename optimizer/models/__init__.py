@@ -1,15 +1,17 @@
-"""Shared data models for all Optimizer modules."""
+"""Shared data models for the Optimizer pipeline."""
 
 from .schemas import (
-    WorkloadResult,
+    CodeContext,
+    FunctionNode,
     Hotspot,
-    CandidateOptimization,
-    OptimizationPass,
+    ModifiedFile,
+    CandidatePatch,
 )
 
 __all__ = [
-    "WorkloadResult",
+    "CodeContext",
+    "FunctionNode",
     "Hotspot",
-    "CandidateOptimization",
-    "OptimizationPass",
+    "ModifiedFile",
+    "CandidatePatch",
 ]
