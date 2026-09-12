@@ -19,6 +19,7 @@ from optimizer.scanner.ast_parser import ASTParser
 DEFAULT_IGNORE_DIRS = {
     ".git", ".venv", "venv", "__pycache__", "node_modules",
     "build", "dist", ".pytest_cache", ".mypy_cache",
+    ".optimizer",  # verifier's backup/.py copies live under <project>/.optimizer/backups/
 }
 
 
