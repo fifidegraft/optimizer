@@ -13,7 +13,6 @@ falls out with no knowledge of how the candidate was expressed.
 from __future__ import annotations
 
 import difflib
-import re
 from pathlib import Path
 
 
@@ -40,16 +39,18 @@ def diff_snapshot(snap: dict) -> str:
     chunks = []
     for entry in snap["files"]:
         rel = entry["path"]
-        before = (backup_dir / rel).read_text() if entry["existed"] else ""
+        before = _read(backup_dir / rel) if entry["existed"] else ""
         current = root / rel
-        after = current.read_text() if current.is_file() else ""
+        after = _read(current) if current.is_file() else ""
         chunk = render_diff(rel, before, after)
         if chunk:
             chunks.append(chunk)
     return "".join(chunks)
 
 
-_HUNK_HEADER = re.compile(r"^@@ ")
+def _read(path: Path) -> str:
+    """Read for diffing: utf-8, never crash on odd bytes, keep line endings as-is."""
+    return path.read_bytes().decode("utf-8", errors="replace")
 
 
 def diff_stats(diff_text: str) -> dict:
