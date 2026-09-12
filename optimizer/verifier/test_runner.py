@@ -9,7 +9,7 @@ never raises for non-zero exits or timeouts. Only a missing/invalid cwd raises.
 Result dict:
     {"command": "pytest -q", "passed": False, "skipped": False, "timed_out": False,
      "exit_code": 1, "duration_ms": 812.4,
-     "total": 34, "passed_count": 32, "failed": 2,      # parsed from pytest's summary; None if unknown
+     "total": 34, "passed_count": 32, "failed": 2,   # from pytest's summary; None if unknown
      "output": "<tail of stdout+stderr>"}
 """
 
@@ -24,7 +24,9 @@ OUTPUT_TAIL_CHARS = 10_000
 
 # pytest summary line. Verbose: "===== 2 failed, 32 passed in 1.23s =====".
 # Quiet (-q): "2 failed, 32 passed in 1.23s" with no bars.
-_COUNT_RE = re.compile(r"(\d+) (passed|failed|error|errors|skipped|xfailed|xpassed|warnings?|deselected)\b")
+_COUNT_RE = re.compile(
+    r"(\d+) (passed|failed|error|errors|skipped|xfailed|xpassed|warnings?|deselected)\b"
+)
 _SUMMARY_LINE_RE = re.compile(
     r"^(?:=+\s*)?"
     r"(?:\d+ (?:passed|failed|errors?|skipped|xfailed|xpassed|warnings?|deselected)(?:, )?)+"

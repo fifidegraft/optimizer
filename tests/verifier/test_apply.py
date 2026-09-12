@@ -66,7 +66,10 @@ def test_edits_of_reads_agreed_schema():
         ({"edits": [{"new_content": "x"}]}, "no path"),
         ({"edits": [{"path": "a.py"}]}, "no new_content"),
         ({"edits": [{"path": "/etc/passwd", "new_content": "x"}]}, "must be relative"),
-        ({"edits": [{"path": "a.py", "new_content": "1"}, {"path": "a.py", "new_content": "2"}]}, "duplicate"),
+        (
+            {"edits": [{"path": "a.py", "new_content": "1"}, {"path": "a.py", "new_content": "2"}]},
+            "duplicate",
+        ),
     ],
 )
 def test_edits_of_rejects_malformed_candidates(bad, message):

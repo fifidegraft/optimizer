@@ -87,27 +87,40 @@ def test_slower_candidate_is_rejected(project):
         project,
         cand(FASTER),
         test_command=PASS_TESTS,
-        benchmark=fake_benchmark(990.0),
+        benchmark=fake_benchmark(1200.0),
         baseline_ms=1000.0,
     )
     assert r["rejection_reason"] == "slower"
     assert r["tests"]["passed"] is True
-    assert r["benchmark"]["after_ms"] == 990.0
+    assert r["benchmark"]["after_ms"] == 1200.0
 
 
 def test_min_improvement_threshold(project):
     kwargs = dict(test_command=PASS_TESTS, baseline_ms=1000.0)
-    # 3% faster passes the default 2% bar
-    assert evaluate_candidate(project, cand(FASTER), benchmark=fake_benchmark(970.0), **kwargs)[
-        "accepted"
-    ]
-    # but not a 5% bar
-    assert (
-        evaluate_candidate(
-            project, cand(FASTER), benchmark=fake_benchmark(970.0), min_improvement=0.05, **kwargs
-        )["rejection_reason"]
-        == "slower"
+    # 3% faster is inside single-run timing noise: rejected by the default 5% bar
+    r = evaluate_candidate(project, cand(FASTER), benchmark=fake_benchmark(970.0), **kwargs)
+    assert r["rejection_reason"] == "slower"
+    # but accepted if the caller lowers the bar
+    r = evaluate_candidate(
+        project, cand(FASTER), benchmark=fake_benchmark(970.0), min_improvement=0.02, **kwargs
     )
+    assert r["accepted"]
+    # 6% faster clears the default
+    r = evaluate_candidate(project, cand(FASTER), benchmark=fake_benchmark(940.0), **kwargs)
+    assert r["accepted"]
+
+
+def test_identical_candidate_is_rejected_without_running_anything(project):
+    bench = fake_benchmark(100.0)  # would look 10x faster if it ran
+    r = evaluate_candidate(
+        project, cand(ORIGINAL), test_command=PASS_TESTS, benchmark=bench, baseline_ms=1000.0
+    )
+    assert r["accepted"] is False
+    assert r["rejection_reason"] == "no_change"
+    assert r["diff"] == ""
+    assert r["tests"] is None and r["benchmark"] is None
+    assert bench.calls == []
+    assert list_backups(project) == []
 
 
 def test_benchmark_failure_is_rejected(project):

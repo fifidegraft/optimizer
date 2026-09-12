@@ -10,7 +10,8 @@ is recoverable with recover_latest().
     discard(snap)    # candidate accepted: drop the backup
 
 A snapshot is a plain dict:
-    {"id": "20260912T141503-3f9a", "root": "/abs/project", "dir": "/abs/project/.optimizer/backups/<id>",
+    {"id": "20260912T141503-3f9a", "root": "/abs/project",
+     "dir": "/abs/project/.optimizer/backups/<id>",
      "files": [{"path": "services/users.py", "existed": True, "sha256": "..."}, ...]}
 """
 
@@ -20,7 +21,7 @@ import hashlib
 import json
 import secrets
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 BACKUP_ROOT = Path(".optimizer") / "backups"
@@ -40,7 +41,7 @@ def _sha256(path: Path) -> str:
 
 
 def _new_id() -> str:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     return f"{stamp}-{secrets.token_hex(2)}"
 
 
@@ -79,7 +80,7 @@ def snapshot(root: str | Path, paths: list[str]) -> dict:
         files.append(entry)
 
     snap = {"id": snap_id, "root": str(root), "dir": str(backup_dir), "files": files}
-    (backup_dir / MANIFEST).write_text(json.dumps(snap, indent=2))
+    (backup_dir / MANIFEST).write_text(json.dumps(snap, indent=2), encoding="utf-8")
     return snap
 
 
@@ -124,7 +125,7 @@ def list_backups(root: str | Path) -> list[dict]:
     for d in base.iterdir():
         manifest = d / MANIFEST
         if manifest.is_file():
-            snaps.append(json.loads(manifest.read_text()))
+            snaps.append(json.loads(manifest.read_text(encoding="utf-8")))
     snaps.sort(key=lambda s: s["id"], reverse=True)
     return snaps
 

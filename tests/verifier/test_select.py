@@ -47,7 +47,8 @@ def test_choose_winner_tie_keeps_first():
 def test_choose_winner_ignores_accepted_without_timing():
     broken = result("candidate_a", True)
     broken["benchmark"] = None
-    assert choose_winner([broken, result("candidate_b", True, 500.0)])["candidate_id"] == "candidate_b"
+    winner = choose_winner([broken, result("candidate_b", True, 500.0)])
+    assert winner["candidate_id"] == "candidate_b"
 
 
 @pytest.fixture

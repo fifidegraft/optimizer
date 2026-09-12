@@ -13,7 +13,8 @@ been measured.
 
 The result is the candidate dict plus:
     "accepted":         bool
-    "rejection_reason": None | "apply_failed" | "tests_failed" | "benchmark_failed" | "slower"
+    "rejection_reason": None | "apply_failed" | "no_change" | "tests_failed"
+                        | "benchmark_failed" | "slower"
     "tests":            run_tests() output, or None if never reached
     "benchmark":        {"before_ms", "after_ms", "speedup", "exit_code", "output"}, or None
     "diff":             unified diff of what the candidate changed ("" if apply failed)
@@ -30,10 +31,12 @@ from .backup import discard, restore
 from .diff import diff_snapshot
 from .test_runner import run_tests
 
-REJECTION_REASONS = ("apply_failed", "tests_failed", "benchmark_failed", "slower")
+REJECTION_REASONS = ("apply_failed", "no_change", "tests_failed", "benchmark_failed", "slower")
 
 # A candidate must beat the baseline by at least this fraction to count as faster.
-DEFAULT_MIN_IMPROVEMENT = 0.02
+# Single-run timings jitter by a few percent, so 2% is not enough to separate a
+# real win from noise; the demo's planted bottlenecks give 2x or better anyway.
+DEFAULT_MIN_IMPROVEMENT = 0.05
 
 
 def evaluate_candidate(
@@ -66,6 +69,11 @@ def evaluate_candidate(
 
     try:
         result["diff"] = diff_snapshot(snap)
+        if not result["diff"]:
+            # Identical to the original: nothing to measure, and timing noise
+            # could otherwise "accept" it.
+            result["rejection_reason"] = "no_change"
+            return result
 
         tests = run_tests(test_command, root, timeout=test_timeout)
         result["tests"] = tests
@@ -96,11 +104,8 @@ def evaluate_candidate(
 def _benchmark_summary(raw: dict, baseline_ms: float) -> dict:
     """Normalize the profiler's timing dict into the agreed benchmark shape."""
     exit_code = int(raw.get("exit_code", 0))
-    after_ms = raw.get("runtime_ms")
-    if exit_code != 0 or after_ms is None:
-        after_ms = None
-    else:
-        after_ms = float(after_ms)
+    raw_ms = raw.get("runtime_ms")
+    after_ms = None if exit_code != 0 or raw_ms is None else float(raw_ms)
     speedup = baseline_ms / after_ms if after_ms else None
     return {
         "before_ms": float(baseline_ms),

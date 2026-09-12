@@ -83,7 +83,9 @@ def apply_candidate(root: str | Path, candidate: dict) -> dict:
         for path, content in pairs:
             target = root / path
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content)
+            # utf-8 regardless of locale; newline="" writes the content byte-for-byte
+            # instead of translating \n on Windows.
+            target.write_text(content, encoding="utf-8", newline="")
     except OSError as exc:
         restore(snap)
         raise ApplyError(f"could not write {path}: {exc}") from exc
