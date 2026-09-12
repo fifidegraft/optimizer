@@ -347,7 +347,7 @@ def _run(config: RunConfig, console: Console, confirm: Callable[[], bool]) -> Ru
 
 
 def _print_winner(console: Console, pr: dict) -> None:
-    text = format_winner(pr, show_diff=False)
+    text = format_winner({**pr, "applied": True}, show_diff=False)  # shown before the prompt; no "(not applied)"
     console.heading(text.split("\n", 1)[0])
     console.print(text.split("\n", 1)[1] if "\n" in text else "")
     if pr.get("diff"):
