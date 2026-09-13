@@ -76,6 +76,7 @@ def test_resolve_hotspot_prefers_manual_then_profiler(project):
         {"function": "nope", "file": "/usr/lib/python3/os.py", "line": 1, "calls": 1},
         {"function": "summarize", "file": str(project / "lib.py"), "line": 12, "calls": 60, "runtime_percent": 99.0},
         {"function": "parse", "file": "lib.py", "line": 5, "calls": 600},
+        {"function": "<genexpr>", "file": "lib.py", "line": 12, "calls": 9},
     )
     config = cfg(project, hotspots=("parse",), profile_fn=prof)
     first = resolve_hotspot(scanner, config, project, 1, set())
@@ -86,6 +87,16 @@ def test_resolve_hotspot_prefers_manual_then_profiler(project):
     assert second["function"] == "summarize" and second["calls"] == 60  # bench.py and stdlib skipped
     third = resolve_hotspot(scanner, config, project, 2, {"lib.parse", "lib.summarize"})
     assert third is None
+
+
+def test_resolve_hotspot_matches_basename_when_dirs_are_stripped(project):
+    (project / "pkg").mkdir()
+    (project / "pkg" / "__init__.py").write_text("")
+    (project / "pkg" / "deep.py").write_text("def inner(x):\n    return x * 2\n")
+    scanner = ProjectScanner(str(project)).scan()
+    prof = fake_profiler({"function": "inner", "file": "deep.py", "line": 1, "calls": 5, "runtime_percent": 40.0})
+    got = resolve_hotspot(scanner, cfg(project, hotspots=(), profile_fn=prof), project, 1, set())
+    assert got["qualified_name"] == "pkg.deep.inner" and got["calls"] == 5
 
 
 def test_unknown_manual_hotspot_fails_before_any_llm_call(project):

@@ -156,13 +156,26 @@ def _profiled_hotspots(scanner: ProjectScanner, config: RunConfig, root: Path) -
     skip_file = workload_file(config.workload)
     out = []
     for h in prof.get("hotspots") or []:
-        node = scanner.find_function_by_location(h.get("file", ""), int(h.get("line", 0)))
+        if str(h.get("function", "")).startswith("<"):
+            continue  # <module>, <genexpr>, <lambda>: nothing to optimize
+        node = _locate(scanner, h.get("file", ""), int(h.get("line", 0)))
         if node is None or node.file_path == skip_file:
             continue
         if node.file_path.startswith("tests/") or Path(node.file_path).name.startswith("test_"):
             continue
         out.append(build_hotspot(scanner, node, h))
     return out
+
+
+def _locate(scanner: ProjectScanner, file: str, line: int):
+    """Exact path first; else match by basename + line (cProfile's text output strips directories)."""
+    node = scanner.find_function_by_location(file, line)
+    if node is not None or not file:
+        return node
+    base = Path(file).name
+    hits = [n for n in scanner.functions.values()
+            if Path(n.file_path).name == base and n.line_start <= line <= n.line_end]
+    return hits[0] if len(hits) == 1 else None
 
 
 def resolve_hotspot(
@@ -232,6 +245,7 @@ def _run(config: RunConfig, console: Console, confirm: Callable[[], bool]) -> Ru
         raise PipelineError("A --workload command is required to measure anything.")
     root, scanner = _scan(config, console)
     timing = config.measure_fn or measure
+    summary_before = project_summary(scanner, root)  # the report describes the project as it started
 
     console.print()
     if config.test:
@@ -336,7 +350,7 @@ def _run(config: RunConfig, console: Console, confirm: Callable[[], bool]) -> Ru
         final_tests = run_tests(config.test, root, timeout=config.timeout)
         console.print(_tests_line(final_tests))
 
-    fr = final_report(project_summary(scanner, root), initial_ms, current_ms, passes, tests=final_tests)
+    fr = final_report(summary_before, initial_ms, current_ms, passes, tests=final_tests)
     console.print()
     from optimizer.verifier import format_report
 
