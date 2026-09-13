@@ -118,7 +118,7 @@ export default function Home() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">⚡ Optimizer Results</h1>
-          <p className="text-gray-600">AI proposes. The runtime decides.</p>
+          <p className="text-gray-700">AI proposes. The runtime decides.</p>
         </div>
 
         {/* Content */}
@@ -142,7 +142,7 @@ export default function Home() {
         ) : (
           <div>
             {showMock && (
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-300 rounded-lg text-sm text-blue-900">
                 👀 Showing mock demo results. Upload your own results.json to see real optimization data.
               </div>
             )}
@@ -163,7 +163,7 @@ export default function Home() {
                 setResult(null);
                 setShowMock(false);
               }}
-              className="mt-8 text-sm text-gray-600 hover:text-gray-900 underline"
+              className="mt-8 text-sm text-gray-700 hover:text-gray-900 underline"
             >
               ← Load different results
             </button>

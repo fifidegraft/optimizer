@@ -32,7 +32,7 @@ export function CandidateComparison({ candidates }: CandidateComparisonProps) {
             <div className="flex items-start justify-between">
               <div>
                 <div className="font-medium">{candidate.strategy}</div>
-                <div className="text-sm text-gray-600 mt-1">{candidate.explanation}</div>
+                <div className="text-sm text-gray-800 mt-1">{candidate.explanation}</div>
               </div>
               <div className="text-right">
                 {candidate.tests_passed === false ? (
@@ -50,12 +50,12 @@ export function CandidateComparison({ candidates }: CandidateComparisonProps) {
             {candidate.benchmark_before_ms && candidate.benchmark_after_ms && (
               <div className="mt-3 flex gap-2 text-xs">
                 <div>
-                  <span className="text-gray-600">Before:</span>
+                  <span className="text-gray-800">Before:</span>
                   <span className="font-mono ml-1">{(candidate.benchmark_before_ms / 1000).toFixed(2)}s</span>
                 </div>
                 <span className="text-gray-400">→</span>
                 <div>
-                  <span className="text-gray-600">After:</span>
+                  <span className="text-gray-800">After:</span>
                   <span className="font-mono ml-1">{(candidate.benchmark_after_ms / 1000).toFixed(2)}s</span>
                 </div>
               </div>

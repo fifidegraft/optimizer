@@ -33,7 +33,7 @@ export function FileUpload({ onLoad }: FileUploadProps) {
       <div className="mb-4">
         <div className="text-5xl mb-2">📂</div>
         <h3 className="text-lg font-semibold mb-1">Upload Optimizer Results</h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-800">
           Load a JSON results file from the CLI to view optimization reports
         </p>
       </div>
