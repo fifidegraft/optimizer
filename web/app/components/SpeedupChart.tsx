@@ -7,30 +7,17 @@ interface SpeedupChartProps {
 }
 
 export function SpeedupChart({ passes }: SpeedupChartProps) {
-  // Calculate cumulative speedup
-  let cumulativeSpeedup = 1;
-  const chartData = passes.map((pass) => {
-    cumulativeSpeedup *= pass.speedup;
-    return {
-      pass: pass.pass,
-      individual: pass.speedup,
-      cumulative: cumulativeSpeedup,
-    };
-  });
-
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
       <h3 className="text-lg font-semibold mb-6">Speedup Progression</h3>
 
       <div>
-        {/* Time Comparison Table */}
-        <div>
-          <div className="text-sm font-medium text-gray-800 mb-4">
-            Pass Details
-          </div>
+        <div className="text-sm font-medium text-gray-800 mb-4">
+          Pass Details
+        </div>
 
-          <div className="space-y-3">
-            {passes.map((pass) => (
+        <div className="space-y-3">
+          {passes.map((pass) => (
               <div
                 key={pass.pass}
                 className="border border-gray-200 rounded p-3 bg-gray-50"
@@ -79,31 +66,6 @@ export function SpeedupChart({ passes }: SpeedupChartProps) {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Summary Stats */}
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-green-50 p-3 rounded text-center">
-            <div className="text-2xl font-bold text-green-600">
-              {chartData[chartData.length - 1].cumulative.toFixed(2)}x
-            </div>
-            <div className="text-xs text-gray-700 mt-1">Total Speedup</div>
-          </div>
-
-          <div className="bg-blue-50 p-3 rounded text-center">
-            <div className="text-2xl font-bold text-blue-600">{passes.length}</div>
-            <div className="text-xs text-gray-700 mt-1">Passes</div>
-          </div>
-
-          <div className="bg-purple-50 p-3 rounded text-center">
-            <div className="text-2xl font-bold text-purple-600">
-              {(((chartData[chartData.length - 1].cumulative - 1) * 100)).toFixed(0)}%
-            </div>
-            <div className="text-xs text-gray-700 mt-1">Improvement</div>
-          </div>
-        </div>
       </div>
     </div>
   );

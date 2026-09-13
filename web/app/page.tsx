@@ -5,7 +5,6 @@ import { OptimizationResult } from "./types";
 import { FileUpload } from "./components/FileUpload";
 import { ResultsSummary } from "./components/ResultsSummary";
 import { PassCard } from "./components/PassCard";
-import { CandidateComparison } from "./components/CandidateComparison";
 import { SpeedupChart } from "./components/SpeedupChart";
 
 const MOCK_RESULT: OptimizationResult = {
@@ -160,14 +159,21 @@ export default function Home() {
               <h2 className="text-2xl font-bold text-gray-800 mb-6">🔧 Optimization Passes</h2>
             </div>
 
-            <div className="space-y-6">
-              {result.passes.map((pass) => (
-                <div key={pass.pass}>
-                  <PassCard pass={pass} />
-                  <CandidateComparison candidates={pass.candidates} />
-                </div>
-              ))}
-            </div>
+            {result.passes.length === 0 ? (
+              <div className="bg-emerald-50 border border-emerald-300 rounded-lg p-8 text-center">
+                <div className="text-3xl mb-3">✨</div>
+                <h3 className="text-lg font-semibold text-emerald-900 mb-2">Fully Optimized</h3>
+                <p className="text-emerald-700">
+                  No further optimization opportunities detected. Your code is running at peak performance!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {result.passes.map((pass) => (
+                  <PassCard key={pass.pass} pass={pass} />
+                ))}
+              </div>
+            )}
 
             <button
               onClick={() => {
