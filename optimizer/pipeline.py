@@ -13,9 +13,11 @@ PROFILER_CONTRACT). Until it lands, `--hotspot NAME` names the target.
 
 from __future__ import annotations
 
+import json
 import shlex
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 from optimizer.agent import generate_candidates, get_llm_client
@@ -93,15 +95,26 @@ class RunResult:
     passes: list[dict] = field(default_factory=list)
     applied_any: bool = False
     declined: bool = False
+    config: RunConfig | None = None
+    total_speedup: float = 1.0
 
     def to_json(self) -> dict:
-        return {
-            "exit_code": self.exit_code,
-            "applied": self.applied_any,
-            "declined": self.declined,
-            "report": self.report,
+        """Return results in web UI format."""
+        # Calculate total speedup from passes
+        total_speedup = 1.0
+        for pass_data in self.passes:
+            if "speedup" in pass_data:
+                total_speedup *= pass_data["speedup"]
+
+        result = {
+            "repository": str(self.config.path) if self.config else ".",
+            "timestamp": datetime.now().isoformat(),
+            "workload_command": self.config.workload if self.config else "",
+            "test_command": self.config.test if self.config else "",
+            "total_speedup": total_speedup,
             "passes": self.passes,
         }
+        return result
 
 
 # --------------------------------------------------------------------------- #
@@ -224,7 +237,7 @@ def run(config: RunConfig, console: Console, confirm: Callable[[], bool]) -> Run
         return _run(config, console, confirm)
     except PipelineError as exc:
         console.error(str(exc))
-        return RunResult(EXIT_FAILED)
+        return RunResult(EXIT_FAILED, config=config)
 
 
 def _run(config: RunConfig, console: Console, confirm: Callable[[], bool]) -> RunResult:
@@ -343,7 +356,7 @@ def _run(config: RunConfig, console: Console, confirm: Callable[[], bool]) -> Ru
     console.print(format_report(fr))
 
     code = EXIT_OK if (applied_any or declined) else EXIT_NOTHING_APPLIED
-    return RunResult(code, report=fr, passes=passes, applied_any=applied_any, declined=declined)
+    return RunResult(code, report=fr, passes=passes, applied_any=applied_any, declined=declined, config=config)
 
 
 def _print_winner(console: Console, pr: dict) -> None:
