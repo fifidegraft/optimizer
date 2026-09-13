@@ -7,6 +7,7 @@ and generating 2-3 structured candidate optimization patches.
 from .candidate_generator import CandidateGenerator
 from .context_builder import ContextBuilder
 from .llm_client import (
+    AnthropicLLMClient,
     BaseLLMClient,
     GeminiLLMClient,
     MockLLMClient,
@@ -33,6 +34,7 @@ def generate_candidates(
 __all__ = [
     "CandidateGenerator",
     "ContextBuilder",
+    "AnthropicLLMClient",
     "BaseLLMClient",
     "GeminiLLMClient",
     "MockLLMClient",

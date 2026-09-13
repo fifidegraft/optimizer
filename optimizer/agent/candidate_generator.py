@@ -8,6 +8,7 @@ from __future__ import annotations
 import ast
 import os
 import re
+import sys
 from typing import Dict, List, Optional, Union
 
 from ..models.schemas import CandidatePatch, Hotspot, ModifiedFile
@@ -53,7 +54,7 @@ class CandidateGenerator:
                 system_prompt=SYSTEM_OPTIMIZER_PROMPT
             )
         except Exception as e:
-            print(f"[CandidateGenerator] LLM generation failed: {e}. Falling back to mock generator.")
+            print(f"[CandidateGenerator] LLM generation failed: {e}. Falling back to mock generator.", file=sys.stderr)
             return self._generate_mock_candidates(hotspot, file_contents, base_dir)
 
         raw_candidates = response_json.get("candidates", [])
@@ -97,7 +98,7 @@ class CandidateGenerator:
 
         # Fallback if no valid candidate was returned
         if not candidates:
-            print("[CandidateGenerator] No valid candidates returned by LLM. Generating deterministic mock candidates.")
+            print("[CandidateGenerator] No valid candidates returned by LLM. Generating deterministic mock candidates.", file=sys.stderr)
             return self._generate_mock_candidates(hotspot, file_contents, base_dir)
 
         return candidates

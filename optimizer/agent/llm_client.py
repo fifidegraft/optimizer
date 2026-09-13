@@ -2,6 +2,7 @@
 LLM Provider Wrapper for Optimizer.
 Designed to be zero-cost-first:
 - Built-in Mock provider (default, 0 setup, 0 cost, offline-safe)
+- Anthropic Claude (claude-opus-5, claude-3-7-sonnet, etc.)
 - Google Gemini (free tier via Google AI Studio)
 - Local Ollama (100% free, runs offline on local machine)
 - Groq / OpenAI (for users with existing keys)
@@ -198,6 +199,72 @@ class OpenAICompatibleLLMClient(BaseLLMClient):
             raise RuntimeError(f"Connection to {self.base_url} failed: {e}") from e
 
 
+class AnthropicLLMClient(BaseLLMClient):
+    """
+    Anthropic Claude API client using standard library HTTP (no extra pip packages required).
+    Sends raw HTTP requests to /v1/messages with headers:
+      - x-api-key: <api_key>
+      - anthropic-version: 2023-06-01
+      - Content-Type: application/json
+    """
+
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "claude-opus-5",
+        base_url: str = "https://api.anthropic.com/v1",
+        max_tokens: int = 32000,
+    ):
+        self.api_key = api_key
+        self.model = model
+        self.base_url = base_url.rstrip("/")
+        self.max_tokens = max(max_tokens, 32000)
+
+    def generate_raw(self, prompt: str, system_prompt: str) -> str:
+        if self.base_url.endswith("/v1"):
+            url = f"{self.base_url}/messages"
+        else:
+            url = f"{self.base_url}/v1/messages"
+
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+        }
+
+        payload = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "system": system_prompt,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+        }
+
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                result = json.loads(resp.read().decode("utf-8"))
+                content = result.get("content", [])
+                if not content:
+                    raise RuntimeError("Anthropic returned empty content list")
+                text_parts = [
+                    part.get("text", "")
+                    for part in content
+                    if part.get("type") == "text" or "text" in part
+                ]
+                if not text_parts:
+                    raise RuntimeError("Anthropic response had no text parts")
+                return "".join(text_parts)
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Anthropic API Error (HTTP {e.code}): {err_body}") from e
+        except Exception as e:
+            raise RuntimeError(f"Anthropic connection failed: {e}") from e
+
+
 def get_llm_client() -> BaseLLMClient:
     """
     Factory that automatically selects the appropriate LLM client based on environment variables.
@@ -210,7 +277,15 @@ def get_llm_client() -> BaseLLMClient:
     if provider == "mock":
         return MockLLMClient()
 
-    # 1. Gemini (Free tier)
+    # 1. Anthropic
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    if provider == "anthropic" or (not provider and anthropic_key):
+        if not anthropic_key:
+            raise ValueError("ANTHROPIC_API_KEY environment variable is required for Anthropic provider.")
+        model = os.getenv("ANTHROPIC_MODEL", "claude-opus-5")
+        return AnthropicLLMClient(api_key=anthropic_key, model=model)
+
+    # 2. Gemini (Free tier)
     gemini_key = os.getenv("GEMINI_API_KEY")
     if provider == "gemini" or (not provider and gemini_key):
         if not gemini_key:
@@ -218,13 +293,13 @@ def get_llm_client() -> BaseLLMClient:
         model = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
         return GeminiLLMClient(api_key=gemini_key, model=model)
 
-    # 2. Local Ollama (100% Free local offline)
+    # 3. Local Ollama (100% Free local offline)
     ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434/v1")
     if provider == "ollama":
         model = os.getenv("OLLAMA_MODEL", "qwen2.5-coder")
         return OpenAICompatibleLLMClient(base_url=ollama_host, api_key="ollama", model=model)
 
-    # 3. Groq (Free tier)
+    # 4. Groq (Free tier)
     groq_key = os.getenv("GROQ_API_KEY")
     if provider == "groq" or (not provider and groq_key):
         if not groq_key:
@@ -236,7 +311,7 @@ def get_llm_client() -> BaseLLMClient:
             model=model
         )
 
-    # 4. OpenAI
+    # 5. OpenAI
     openai_key = os.getenv("OPENAI_API_KEY")
     if provider == "openai" or (not provider and openai_key):
         if not openai_key:
@@ -250,5 +325,5 @@ def get_llm_client() -> BaseLLMClient:
 
     # Default fallback: Mock provider
     print("[Optimizer Agent] No LLM API key detected. Running in free Mock Mode.")
-    print("[Optimizer Agent] (Tip: set GEMINI_API_KEY or OLLAMA_HOST in .env for live models)")
+    print("[Optimizer Agent] (Tip: set ANTHROPIC_API_KEY, GEMINI_API_KEY, or OLLAMA_HOST in .env for live models)")
     return MockLLMClient()
