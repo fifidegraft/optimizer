@@ -33,17 +33,17 @@ export function PassCard({ pass }: { pass: OptimizationPass }) {
         <div className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">
           📊 Performance Metrics
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-rose-50 p-3 rounded border border-rose-200">
+        <div className="grid grid-cols-3 gap-3 items-stretch">
+          <div className="bg-rose-50 p-3 rounded border border-rose-200 flex flex-col justify-center">
             <div className="text-xs text-gray-700">Before</div>
             <div className="font-semibold text-sm text-gray-800">
               {(pass.before_ms / 1000).toFixed(2)}s
             </div>
           </div>
           <div className="flex items-center justify-center">
-            <div className="text-gray-400 font-bold">→</div>
+            <div className="text-5xl text-gray-400 font-bold leading-none">→</div>
           </div>
-          <div className="bg-emerald-50 p-3 rounded border border-emerald-200">
+          <div className="bg-emerald-50 p-3 rounded border border-emerald-200 flex flex-col justify-center">
             <div className="text-xs text-gray-700">After</div>
             <div className="font-semibold text-sm text-gray-800">
               {(pass.after_ms / 1000).toFixed(2)}s
