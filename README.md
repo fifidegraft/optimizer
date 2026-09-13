@@ -1,4 +1,4 @@
-# Optimizer
+# Repo Intelligence Optimizer
 
 **Autonomous performance engineer for Python codebases.**
 
