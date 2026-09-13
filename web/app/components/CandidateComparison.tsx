@@ -19,54 +19,76 @@ export function CandidateComparison({ candidates }: CandidateComparisonProps) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-      <h4 className="font-semibold mb-4">Candidate Comparison</h4>
+      <h4 className="font-semibold mb-4 text-gray-800">Candidate Comparison</h4>
 
       <div className="space-y-3">
         {validCandidates.map((candidate) => (
           <div
             key={candidate.candidate_id}
-            className={`border rounded-lg p-4 ${
-              candidate.accepted ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"
+            className={`border-2 rounded-lg p-4 transition-all ${
+              candidate.accepted
+                ? "bg-amber-50 border-amber-400 shadow-lg shadow-amber-200"
+                : candidate.tests_passed === false
+                ? "bg-red-50 border-red-200"
+                : "bg-gray-50 border-gray-200"
             }`}
           >
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="font-medium">{candidate.strategy}</div>
-                <div className="text-sm text-gray-800 mt-1">{candidate.explanation}</div>
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="font-semibold text-gray-800">{candidate.strategy}</div>
+                  {candidate.accepted && (
+                    <div className="inline-flex items-center gap-1 bg-amber-400 text-amber-900 px-2.5 py-0.5 rounded-full text-xs font-bold animate-pulse">
+                      🏆 WINNER
+                    </div>
+                  )}
+                </div>
+                <div className="text-sm text-gray-700 mt-1">{candidate.explanation}</div>
               </div>
-              <div className="text-right">
+              <div className="text-right ml-4">
                 {candidate.tests_passed === false ? (
-                  <div className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                  <div className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded font-medium">
                     Tests Failed
                   </div>
                 ) : (
-                  <div className="text-2xl font-bold text-blue-600">
-                    {(candidate.speedup || 0).toFixed(2)}x
+                  <div>
+                    <div
+                      className={`text-3xl font-bold ${
+                        candidate.accepted ? "text-amber-600" : "text-blue-600"
+                      }`}
+                    >
+                      {(candidate.speedup || 0).toFixed(2)}x
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">speedup</div>
                   </div>
                 )}
               </div>
             </div>
 
             {candidate.benchmark_before_ms && candidate.benchmark_after_ms && (
-              <div className="mt-3 flex gap-2 text-xs">
-                <div>
-                  <span className="text-gray-800">Before:</span>
-                  <span className="font-mono ml-1">{(candidate.benchmark_before_ms / 1000).toFixed(2)}s</span>
+              <div className="mt-3 pt-3 border-t border-gray-200 flex flex-wrap gap-3 text-xs">
+                <div className="bg-white px-2.5 py-1.5 rounded border border-gray-200">
+                  <span className="text-gray-600">Before:</span>
+                  <span className="font-mono font-semibold ml-2 text-gray-800">
+                    {(candidate.benchmark_before_ms / 1000).toFixed(2)}s
+                  </span>
                 </div>
-                <span className="text-gray-400">→</span>
-                <div>
-                  <span className="text-gray-800">After:</span>
-                  <span className="font-mono ml-1">{(candidate.benchmark_after_ms / 1000).toFixed(2)}s</span>
+                <span className="text-gray-400 flex items-center">→</span>
+                <div className="bg-white px-2.5 py-1.5 rounded border border-gray-200">
+                  <span className="text-gray-600">After:</span>
+                  <span className="font-mono font-semibold ml-2 text-gray-800">
+                    {(candidate.benchmark_after_ms / 1000).toFixed(2)}s
+                  </span>
                 </div>
               </div>
             )}
 
             {candidate.rejection_reason && (
-              <div className="mt-2 text-xs text-red-600">❌ Rejected: {candidate.rejection_reason}</div>
-            )}
-
-            {candidate.accepted && (
-              <div className="mt-2 text-xs text-green-600">✅ Accepted as winner</div>
+              <div className="mt-3 pt-3 border-t border-red-200">
+                <div className="text-xs text-red-700 font-medium">
+                  ❌ Rejected: {candidate.rejection_reason}
+                </div>
+              </div>
             )}
           </div>
         ))}

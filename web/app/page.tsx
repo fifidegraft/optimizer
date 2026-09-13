@@ -6,6 +6,7 @@ import { FileUpload } from "./components/FileUpload";
 import { ResultsSummary } from "./components/ResultsSummary";
 import { PassCard } from "./components/PassCard";
 import { CandidateComparison } from "./components/CandidateComparison";
+import { SpeedupChart } from "./components/SpeedupChart";
 
 const MOCK_RESULT: OptimizationResult = {
   repository: "demo",
@@ -148,6 +149,16 @@ export default function Home() {
             )}
 
             <ResultsSummary result={result} />
+
+            <div className="my-8 pt-6 border-t-2 border-gray-300">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">📈 Optimization Progress</h2>
+            </div>
+
+            <SpeedupChart passes={result.passes} />
+
+            <div className="my-8 pt-6 border-t-2 border-gray-300">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">🔧 Optimization Passes</h2>
+            </div>
 
             <div className="space-y-6">
               {result.passes.map((pass) => (
