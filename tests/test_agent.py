@@ -4,13 +4,19 @@ Aligned with Fifi's Verifier integration contract.
 """
 
 import ast
+import io
+import json
 import os
+import sys
 import tempfile
 import unittest
+import urllib.error
+from unittest.mock import MagicMock, patch
+
 from optimizer.models.schemas import Hotspot, CandidatePatch, ModifiedFile
 from optimizer.agent.context_builder import ContextBuilder, normalize_path, lookup_file_content
 from optimizer.agent.candidate_generator import CandidateGenerator
-from optimizer.agent.llm_client import BaseLLMClient, MockLLMClient
+from optimizer.agent.llm_client import AnthropicLLMClient, BaseLLMClient, MockLLMClient, get_llm_client
 from optimizer.agent import generate_candidates
 
 
@@ -274,6 +280,96 @@ class TestOptimizationAgent(unittest.TestCase):
             self.assertNotEqual(c.candidate_id, "candidate_broken")
             for e in c.edits:
                 ast.parse(e.new_content)
+
+    def test_anthropic_client_initialization(self):
+        client = AnthropicLLMClient(api_key="test-key")
+        self.assertEqual(client.model, "claude-opus-5")
+        self.assertEqual(client.max_tokens, 32000)
+
+        # max_tokens cannot be lower than 32000
+        client2 = AnthropicLLMClient(api_key="test-key", model="claude-3-7-sonnet", max_tokens=1000)
+        self.assertEqual(client2.max_tokens, 32000)
+
+    @patch("urllib.request.urlopen")
+    def test_anthropic_client_generate_raw_success(self, mock_urlopen):
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "content": [
+                {"type": "text", "text": "{\"candidates\": []}"}
+            ]
+        }).encode("utf-8")
+        mock_response.__enter__.return_value = mock_response
+        mock_urlopen.return_value = mock_response
+
+        client = AnthropicLLMClient(api_key="sk-ant-test1234", model="claude-opus-5")
+        output = client.generate_raw("test prompt", "test system")
+
+        self.assertEqual(output, "{\"candidates\": []}")
+        mock_urlopen.assert_called_once()
+        req = mock_urlopen.call_args[0][0]
+        self.assertEqual(req.full_url, "https://api.anthropic.com/v1/messages")
+        self.assertEqual(req.headers["X-api-key"], "sk-ant-test1234")
+        self.assertEqual(req.headers["Anthropic-version"], "2023-06-01")
+        self.assertEqual(req.headers["Content-type"], "application/json")
+
+        payload = json.loads(req.data.decode("utf-8"))
+        self.assertEqual(payload["model"], "claude-opus-5")
+        self.assertEqual(payload["max_tokens"], 32000)
+        self.assertEqual(payload["system"], "test system")
+        self.assertEqual(payload["messages"], [{"role": "user", "content": "test prompt"}])
+
+    @patch("urllib.request.urlopen")
+    def test_anthropic_client_http_error(self, mock_urlopen):
+        mock_urlopen.side_effect = urllib.error.HTTPError(
+            url="https://api.anthropic.com/v1/messages",
+            code=401,
+            msg="Unauthorized",
+            hdrs={},
+            fp=io.BytesIO(b'{"error": "invalid_api_key"}')
+        )
+        client = AnthropicLLMClient(api_key="bad-key")
+        with self.assertRaises(RuntimeError) as ctx:
+            client.generate_raw("prompt", "system")
+        self.assertIn("Anthropic API Error (HTTP 401)", str(ctx.exception))
+
+    @patch("optimizer.agent.llm_client.load_env_file")
+    def test_get_llm_client_anthropic(self, _mock_env):
+        with patch.dict(os.environ, {"LLM_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "test-key", "ANTHROPIC_MODEL": "claude-opus-5"}, clear=True):
+            client = get_llm_client()
+            self.assertIsInstance(client, AnthropicLLMClient)
+            self.assertEqual(client.model, "claude-opus-5")
+
+    @patch("optimizer.agent.llm_client.load_env_file")
+    def test_get_llm_client_anthropic_auto_detect(self, _mock_env):
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}, clear=True):
+            client = get_llm_client()
+            self.assertIsInstance(client, AnthropicLLMClient)
+
+    @patch("optimizer.agent.llm_client.load_env_file")
+    def test_get_llm_client_anthropic_missing_key_raises(self, _mock_env):
+        with patch.dict(os.environ, {"LLM_PROVIDER": "anthropic"}, clear=True):
+            with self.assertRaises(ValueError) as ctx:
+                get_llm_client()
+            self.assertIn("ANTHROPIC_API_KEY environment variable is required", str(ctx.exception))
+
+    def test_llm_failure_prints_to_stderr_before_fallback(self):
+        """Verify that when LLM call throws, error is printed to stderr before falling back to mock."""
+        class FailingLLMClient(BaseLLMClient):
+            def generate_raw(self, prompt: str, system_prompt: str) -> str:
+                raise RuntimeError("Anthropic rate limit exceeded (HTTP 429)")
+
+        generator = CandidateGenerator(client=FailingLLMClient())
+        captured_stderr = io.StringIO()
+        with patch("sys.stderr", captured_stderr):
+            candidates = generator.generate(
+                hotspot=self.sample_hotspot,
+                file_contents={"billing/services.py": self.sample_source}
+            )
+
+        err_output = captured_stderr.getvalue()
+        self.assertIn("LLM generation failed: Anthropic rate limit exceeded (HTTP 429)", err_output)
+        self.assertIn("Falling back to mock generator", err_output)
+        self.assertGreaterEqual(len(candidates), 1)
 
 
 if __name__ == "__main__":
