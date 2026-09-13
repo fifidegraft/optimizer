@@ -2,7 +2,6 @@
 
 import subprocess
 import time
-import statistics
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -53,7 +52,7 @@ def run_workload(
         1
         >>> # No exception raised; caller decides what to do with exit code
     """
-    start_time = time.perf_counter()
+    start_time = time.time()
     timestamp = datetime.now(timezone.utc).isoformat()
 
     try:
@@ -66,7 +65,7 @@ def run_workload(
             timeout=timeout,
             env=env,
         )
-        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        elapsed_ms = (time.time() - start_time) * 1000
 
         return {
             "runtime_ms": elapsed_ms,
@@ -77,7 +76,7 @@ def run_workload(
         }
 
     except subprocess.TimeoutExpired as e:
-        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        elapsed_ms = (time.time() - start_time) * 1000
         # Capture any partial output before timeout
         partial_output = ""
         if e.stdout:
@@ -94,7 +93,7 @@ def run_workload(
         }
 
     except FileNotFoundError as e:
-        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        elapsed_ms = (time.time() - start_time) * 1000
         return {
             "runtime_ms": elapsed_ms,
             "exit_code": -1,
@@ -104,7 +103,7 @@ def run_workload(
         }
 
     except Exception as e:
-        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        elapsed_ms = (time.time() - start_time) * 1000
         return {
             "runtime_ms": elapsed_ms,
             "exit_code": -1,
@@ -134,7 +133,7 @@ def benchmark_workload(
 
     Returns:
         dict: Benchmark result with fields:
-            - runtime_ms (float): Median execution time across all iterations
+            - runtime_ms (float): Mean execution time across all iterations
             - runtime_stddev (float): Standard deviation of runtimes
             - iterations (int): Number of successful iterations
             - exit_code (int): 0 if all succeeded, -1 if any failed
@@ -144,7 +143,7 @@ def benchmark_workload(
 
     Example:
         >>> result = benchmark_workload("python bench.py", iterations=5)
-        >>> result['runtime_ms']  # Median time (robust to outliers)
+        >>> result['runtime_ms']  # Mean time
         425.3
         >>> result['runtime_stddev']  # Variation
         12.5
@@ -174,23 +173,22 @@ def benchmark_workload(
 
     # Compute statistics
     if results_list:
-        # Use median instead of mean to be robust to outliers
-        median_ms = statistics.median(results_list)
+        mean_ms = sum(results_list) / len(results_list)
 
         # Compute standard deviation
         if len(results_list) > 1:
-            variance = sum((x - median_ms) ** 2 for x in results_list) / len(results_list)
+            variance = sum((x - mean_ms) ** 2 for x in results_list) / len(results_list)
             stddev_ms = variance ** 0.5
         else:
             stddev_ms = 0.0
     else:
-        median_ms = 0.0
+        mean_ms = 0.0
         stddev_ms = 0.0
 
     exit_code = 0 if failed_count == 0 else -1
 
     return {
-        "runtime_ms": median_ms,
+        "runtime_ms": mean_ms,
         "runtime_stddev": stddev_ms,
         "iterations": iterations,
         "successful_iterations": iterations - failed_count,
